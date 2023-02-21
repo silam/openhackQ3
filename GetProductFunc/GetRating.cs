@@ -59,7 +59,7 @@ namespace GetProductFunc
 
 
                 // Point read item from container using the id and partitionKey
-                ProductRating readItem = await container.ReadItemAsync<ProductRating>(
+                Rating readItem = await container.ReadItemAsync<Rating>(
                     id: "79c2779e-dd2e-43e8-803d-ecbebed8972c",
                     partitionKey: new PartitionKey("4c25613a-a3c2-4ef3-8e02-9c335eb23204")
                 );
