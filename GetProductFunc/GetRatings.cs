@@ -10,6 +10,7 @@ using Newtonsoft.Json;
 using Microsoft.Extensions.Configuration;
 using System.Net.Http;
 using Microsoft.Azure.Cosmos;
+using System.Collections.Generic;
 
 namespace GetProductFunc
 {
@@ -28,25 +29,31 @@ namespace GetProductFunc
                                         .AddJsonFile("local.settings.json", optional: true, reloadOnChange: true)
                                         .AddEnvironmentVariables()
                                         .Build();
-
-
                 string userId = req.Query["userId"];
-
-                var connstr = "AccountEndpoint=https://openhackteam6.documents.azure.com:443/;AccountKey=C2eAWV01Ihh2ikO5EqrMTXtJfe4XSa9Ztr2BIhdUMjQmcaJ6Mq2aCFFccZxRyNuc6ijo2fPQ0GzgACDb1wh7rQ==;";
-
-
+                HttpClient client = new HttpClient();
+                try
+                {
+                    
+                    using HttpResponseMessage response = await client.GetAsync(newconfiguration["GetUserUrl"] + $"?userId={userId}");
+                    response.EnsureSuccessStatusCode();
+                }
+                catch (HttpRequestException)
+                {
+                    return new NotFoundObjectResult("User Not Found");
+                }
                 // TODO: Insert into Cosmos DB
-                using CosmosClient dbClient = new CosmosClient(connstr);
+                using CosmosClient dbClient = new CosmosClient(newconfiguration.GetConnectionString("CosmosDBConnectionString"));
                 Database database = dbClient.GetDatabase(id: "productdb");
                 Container container = database.GetContainer(id: "rating");
-
-                Rating readItem = await container.ReadItemAsync<Rating>(
-                        
-                        userId: userId,
-                        partitionKey: new PartitionKey("4c25613a-a3c2-4ef3-8e02-9c335eb23204")
-                    );
-
-                return new OkObjectResult(JsonConvert.SerializeObject(readItem));
+                var query = new QueryDefinition(query: "SELECT * FROM ratings r WHERE r.userId = @userId").WithParameter("@userId", userId);
+                using FeedIterator<Rating> feed = container.GetItemQueryIterator<Rating>(queryDefinition: query);
+                List<Rating> list = new List<Rating>();
+                while (feed.HasMoreResults)
+                {
+                    FeedResponse<Rating> response = await feed.ReadNextAsync();
+                    list.AddRange(response);
+                }
+                return new OkObjectResult(JsonConvert.SerializeObject(list));
             }
             catch (Exception ex)
             {

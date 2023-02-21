@@ -34,12 +34,14 @@ namespace GetProductFunc
             string locationName = data?.locationName;
             int rating = Convert.ToInt32(data?.rating);
             string userNotes = data?.userNotes;
-
+            if (rating < 0 || rating > 5)
+            {
+                return new BadRequestObjectResult("Rating must be between 0 and 5");
+            }
             // TODO: Validate userId and productId exists
             HttpClient client = new HttpClient();
             try
             {
-                
                 using HttpResponseMessage response = await client.GetAsync(newconfiguration["GetProductUrl"] + $"?productId={productId}");
                 response.EnsureSuccessStatusCode();
             }
